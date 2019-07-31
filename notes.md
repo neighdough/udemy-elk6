@@ -427,3 +427,48 @@ sudo /bin/systemctl daemon-reload
 sudo /bin/systemctl enable kibana.service
 sudo /bin/systemctl start kibana.service
 ```
+# Integrating Kafka with Elasticsearch
+
+```
+sudo apt install zookeeperd
+wget https://www-us.apache.org/dist/kafka/2.3.0/kafka_2.11-2.3.0.tgz
+tar -xvf kafka_2.11-2.3.0.tgz
+cd kafka_2.11-2.3.0
+sudo bin/kafka-server-start.sh config/server.properties
+sudo bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic kafka-logs
+#modify logstash.conf, delete s3 and replace with kafka
+sudo vim /etc/logstash/conf.d/logstash.conf
+kafka {
+  bootstrap_servers => "localhost:9092"
+  topics => ["kafka-logs"]
+  }
+sudo bin/kafka-console-producer.sh --broker-list localhost:9092 --topic kafka-logs < ../access_log
+```
+
+# Install, Configure, and use Filebeats
+```
+sudo apt update && sudo apt install filebeat
+cd /usr/share/elasticsearch
+#ingest-geoip and ingest-user-agent included with core elasticsearch starting 
+#with 6.7
+#sudo bin/elasticsearch-plugin install ingest-geoip
+#sudo bin/elasticsearch-plugin install ingest-user-agent
+sudo /bin/systemctl stop elasticsearch.service
+sudo /bin/systemctl start elasticsearch.service
+
+cd /usr/share/filebeat/bin
+
+sudo filebeat setup --dashboards
+
+sudo vim /etc/filebeat/modules.d/apache2.yml
+#change access and error log paths to 
+#["/home/$USER/logs/access*"]
+#["/home/$USER/logs/error*"]
+
+#make /home/$USER/logs
+cd /home/$user/logs
+wget http://media.sundog-soft.com/es/access_log
+sudo /bin/systemctl start filebeat.service
+```
+# Analyzing Server Logs with Kibana
+
